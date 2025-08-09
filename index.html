@@ -86,7 +86,7 @@
         let isAdmin = false;
         let adminsList = [];
         
-        // State for sorting the table
+        // State for sorting the roster table
         let currentSort = { column: 'pr', direction: 'desc' };
 
         // Helper function to show a message to the user
@@ -208,29 +208,43 @@
             }
 
             try {
-                // Safely access the nested player data.
-                const playerArray = rawData?.standings?.roster?.[0]?.standings?.player;
+                const roster = rawData?.standings?.roster?.[0]?.standings?.player;
+                const pointHistory = rawData?.pointHistory?.roster?.[0]?.pointHistory?.point;
+                const lootHistory = rawData?.lootHistory?.roster?.[0]?.lootHistory?.item;
 
-                if (!playerArray) {
+                if (!roster) {
                     showStatusMessage("Error: Could not find player data at the expected path: `standings.roster[0].standings.player`. Please check your JSON format.", true);
                     return;
                 }
 
-                // Map the complex array into the simple format our table expects
-                const formattedRoster = playerArray.map(p => ({
+                // Map the complex roster array into the simple format our table expects
+                const formattedRoster = roster.map(p => ({
                     name: p.name,
                     ep: p.points,
                     gp: p.spent
                 }));
 
                 const rosterRef = doc(db, `artifacts/${appId}/public/data/rosters`, 'guild_roster');
-                
                 await setDoc(rosterRef, {
                     roster: formattedRoster,
                     lastUpdated: new Date().toISOString()
                 });
                 
-                showStatusMessage("Roster data saved successfully!", false);
+                // Save point history to a new collection
+                const pointHistoryRef = doc(db, `artifacts/${appId}/public/data/point_history`, 'log');
+                await setDoc(pointHistoryRef, {
+                    history: pointHistory || [],
+                    lastUpdated: new Date().toISOString()
+                });
+                
+                // Save loot history to a new collection
+                const lootHistoryRef = doc(db, `artifacts/${appId}/public/data/loot_history`, 'log');
+                await setDoc(lootHistoryRef, {
+                    history: lootHistory || [],
+                    lastUpdated: new Date().toISOString()
+                });
+                
+                showStatusMessage("Roster, Point History, and Loot History data saved successfully!", false);
                 dataArea.value = ''; // Clear the text area after successful save
                 
                 // Switch to the public view to show the new data
@@ -250,15 +264,30 @@
                 `<a href="#" id="admin-login-link" class="underline hover:text-[#ff5277]">Are you the Raid Lead? Log in to update.</a>`;
 
             appView.innerHTML = `
-                <div class="space-y-4">
+                <div class="space-y-6">
                     <p class="text-center text-gray-400 text-sm">
                         You are viewing the latest guild roster. ${authLink}
                     </p>
                     <div id="last-updated-display" class="text-sm md:text-base text-gray-400 text-center">
                         <!-- Last updated timestamp will go here -->
                     </div>
+                    
+                    <!-- Roster Table Section -->
+                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4">Roster</h2>
                     <div id="roster-table-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
                         <p class="text-center text-gray-400">Fetching roster data...</p>
+                    </div>
+
+                    <!-- Point History Section -->
+                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8">Point History</h2>
+                    <div id="point-history-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
+                        <p class="text-center text-gray-400">Fetching point history...</p>
+                    </div>
+
+                    <!-- Loot History Section -->
+                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8">Loot History</h2>
+                    <div id="loot-history-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
+                        <p class="text-center text-gray-400">Fetching loot history...</p>
                     </div>
                 </div>
             `;
@@ -285,6 +314,36 @@
             }, (error) => {
                 tableContainer.innerHTML = '<p class="text-center text-red-400">Error fetching data. Please try again later.</p>';
                 console.error("Error fetching roster: ", error);
+            });
+            
+            // Set up a real-time listener for the point history
+            const pointHistoryRef = doc(db, `artifacts/${appId}/public/data/point_history`, 'log');
+            onSnapshot(pointHistoryRef, (docSnap) => {
+                const container = document.getElementById('point-history-container');
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    displayPointHistoryTable(data.history, container);
+                } else {
+                    container.innerHTML = '<p class="text-center text-gray-400">No point history found.</p>';
+                }
+            }, (error) => {
+                container.innerHTML = '<p class="text-center text-red-400">Error fetching point history.</p>';
+                console.error("Error fetching point history: ", error);
+            });
+            
+            // Set up a real-time listener for the loot history
+            const lootHistoryRef = doc(db, `artifacts/${appId}/public/data/loot_history`, 'log');
+            onSnapshot(lootHistoryRef, (docSnap) => {
+                const container = document.getElementById('loot-history-container');
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    displayLootHistoryTable(data.history, container);
+                } else {
+                    container.innerHTML = '<p class="text-center text-gray-400">No loot history found.</p>';
+                }
+            }, (error) => {
+                container.innerHTML = '<p class="text-center text-red-400">Error fetching loot history.</p>';
+                console.error("Error fetching loot history: ", error);
             });
         }
         
@@ -381,6 +440,62 @@
                     });
                 }
             });
+        }
+        
+        function displayPointHistoryTable(historyData, container) {
+            if (!historyData || historyData.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400">No point history to display.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="w-full text-left rounded-lg overflow-hidden">
+                    <thead class="bg-[#a4508b] text-white">
+                        <tr>
+                            <th class="p-3">Time</th>
+                            <th class="p-3">Player</th>
+                            <th class="p-3">Points</th>
+                            <th class="p-3">Reason</th>
+                            <th class="p-3">Awarded By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Sort by timestamp in descending order
+            const sortedHistory = [...historyData].sort((a, b) => b.timestamp - a.timestamp);
+
+            sortedHistory.forEach(point => {
+                const date = new Date(point.timestamp * 1000).toLocaleString(); // Convert to milliseconds
+                tableHTML += `
+                    <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
+                        <td class="p-3 text-sm whitespace-nowrap">${date}</td>
+                        <td class="p-3 text-sm">${point.player}</td>
+                        <td class="p-3 text-sm">${point.points}</td>
+                        <td class="p-3 text-sm">${point.reason}</td>
+                        <td class="p-3 text-sm">${point.awardedBy}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
+        function displayLootHistoryTable(historyData, container) {
+            if (!historyData || historyData.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400">No loot history to display.</p>';
+                return;
+            }
+
+            // Since the user's example JSON had an empty loot array, I'll just
+            // put a placeholder message for now until we get real data.
+            // When real data comes, this function should be updated.
+            container.innerHTML = '<p class="text-center text-gray-400">Loot history data is being received, but there are no items to display yet.</p>';
         }
 
         // Start the application when the window loads

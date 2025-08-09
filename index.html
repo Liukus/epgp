@@ -61,7 +61,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // IMPORTANT: The firebaseConfig object has been updated with your details.
+        // The firebaseConfig object has been updated with your details.
         const firebaseConfig = {
           apiKey: "AIzaSyDLnm4M32fCj9yzI4_O7ryxW12E3RT-OOo",
           authDomain: "thomas-and-friends-raid-epgp.firebaseapp.com",
@@ -143,7 +143,7 @@
             } catch (error) {
                 console.error("Error during sign-in:", error);
                 // The new, more descriptive error message will be shown on the page
-                showStatusMessage("Login failed. This may be due to an incorrect Firebase configuration or because Google Sign-in is not enabled in your project.", true);
+                showStatusMessage("Login failed. This may be due to an incorrect Firebase configuration or because your app's domain is not on the list of authorized domains in your Firebase project.", true);
             }
         }
         
@@ -167,7 +167,7 @@
                         <br>
                         Add this ID to the 'admins' document in your Firestore project to enable updates.
                     </p>
-                    <textarea id="data-paste-area" class="w-full h-48 p-4 bg-[#3b3b5c] text-[#e0e0e0] border-2 border-[#a4508b] rounded-lg focus:outline-none focus:border-[#ff5277]" placeholder="Paste your EP/GP JSON data here. The app will extract the 'name', 'points', and 'spent' values from the nested 'standings' object..."></textarea>
+                    <textarea id="data-paste-area" class="w-full h-48 p-4 bg-[#3b3b5c] text-[#e0e0e0] border-2 border-[#a4508b] rounded-lg focus:outline-none focus:border-[#ff5277]" placeholder="Paste your EP/GP addon JSON data here. The app is looking for a nested structure like: rawData.standings.roster[0].standings.player..."></textarea>
                     <button id="save-button" class="w-full bg-[#ff5277] text-white font-bold py-3 rounded-lg hover:bg-[#ff3b64] transition-colors">
                         Save Roster Data
                     </button>
@@ -192,15 +192,21 @@
                 showStatusMessage("Please paste data before saving.", true);
                 return;
             }
+            
+            let rawData;
+            try {
+                rawData = JSON.parse(dataString);
+            } catch (e) {
+                showStatusMessage("Error: The text you pasted is not a valid JSON format.", true);
+                return;
+            }
 
             try {
-                const rawData = JSON.parse(dataString);
-                
-                // Safely access the nested player data
+                // Safely access the nested player data.
                 const playerArray = rawData?.standings?.roster?.[0]?.standings?.player;
 
                 if (!playerArray) {
-                    showStatusMessage("Error: Could not find player data in the pasted JSON. Please check the format.", true);
+                    showStatusMessage("Error: Could not find player data at the expected path: `standings.roster[0].standings.player`. Please check your JSON format.", true);
                     return;
                 }
 
@@ -224,7 +230,7 @@
                 // Switch to the public view to show the new data
                 renderPublicView();
             } catch (e) {
-                showStatusMessage("Error saving data. Please check the JSON format.", true);
+                showStatusMessage("An unexpected error occurred while saving. Please check the console for details.", true);
                 console.error("Error saving document: ", e);
             }
         }

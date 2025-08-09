@@ -84,7 +84,7 @@
           projectId: "thomas-and-friends-raid-epgp",
           storageBucket: "thomas-and-friends-raid-epgp.firebasestorage.app",
           messagingSenderId: "1041751724978",
-          appId: "1:1041751724978:web:8728200dfe9f749a39caab",
+          appId: "1:104171724978:web:8728200dfe9f749a39caab",
           measurementId: "G-CR1BDVMN2V"
         };
 
@@ -650,9 +650,9 @@
                     <thead class="bg-[#e32636] text-white">
                         <tr>
                             <th class="p-3">Time</th>
-                            <th class="p-3">Item</th>
                             <th class="p-3">Player</th>
                             <th class="p-3">Cost</th>
+                            <th class="p-3">Item</th>
                             <th class="p-3">Awarded By</th>
                         </tr>
                     </thead>
@@ -675,9 +675,9 @@
                 tableHTML += `
                     <tr class="border-b border-gray-700 last:border-b-0 even:bg-gray-800">
                         <td class="p-3 text-sm whitespace-nowrap">${date}</td>
-                        <td class="p-3 text-sm">${itemLink}</td>
                         <td class="p-3 text-sm">${item.player}</td>
-                        <td class="p-3 text-sm">${item.points}</td>
+                        <td class="p-3 text-sm font-bold"><span class="gp-points">${item.points} GP</span></td>
+                        <td class="p-3 text-sm">${itemLink}</td>
                         <td class="p-3 text-sm">${item.awardedBy}</td>
                     </tr>
                 `;

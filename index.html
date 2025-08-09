@@ -61,8 +61,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // IMPORTANT: Replace the following configuration with your actual Firebase project details.
-        // You can find this object in your Firebase console under Project Settings > Your apps.
+        // IMPORTANT: The firebaseConfig object has been updated with your details.
         const firebaseConfig = {
           apiKey: "AIzaSyDLnm4M32fCj9yzI4_O7ryxW12E3RT-OOo",
           authDomain: "thomas-and-friends-raid-epgp.firebaseapp.com",
@@ -74,7 +73,7 @@
         };
 
         // Your application ID, used for the Firestore path.
-        // You can manually set this to the ID you provided earlier.
+        // This is a human-readable ID that matches the one in your security rules.
         const appId = "t-and-f-epgp";
         
         // Global variables for Firebase services and user data
@@ -143,7 +142,8 @@
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Error during sign-in:", error);
-                showStatusMessage("Login failed. Please try again.", true);
+                // The new, more descriptive error message will be shown on the page
+                showStatusMessage("Login failed. This may be due to an incorrect Firebase configuration or because Google Sign-in is not enabled in your project.", true);
             }
         }
         

@@ -35,6 +35,11 @@
             background: #a4508b;
             border-radius: 10px;
         }
+
+        .quality-6 { color: #ff8000; } /* Legendary */
+        .quality-5 { color: #a335ee; } /* Epic */
+        .quality-4 { color: #0070dd; } /* Rare */
+        .quality-3 { color: #1eff00; } /* Uncommon */
     </style>
 </head>
 <body class="p-6 md:p-10 flex flex-col items-center justify-center min-h-screen">
@@ -42,7 +47,7 @@
     <!-- Main application container -->
     <div id="app" class="w-full max-w-4xl bg-[#2c2c44] rounded-2xl shadow-xl p-8 md:p-12">
         <h1 class="text-3xl md:text-4xl font-bold text-[#ff5277] mb-6 text-center">
-            Season 3 EP/GP
+            Season 3 EP/GP -v2
         </h1>
         
         <!-- Status and user information display area -->
@@ -106,6 +111,7 @@
                 // Listen for authentication state changes and handle all logic from here
                 onAuthStateChanged(auth, async (user) => {
                     userId = user ? user.uid : null;
+                    console.log("Auth state changed. User ID:", userId);
                     
                     try {
                         // Fetch the list of admin UIDs from Firestore only after auth state is known
@@ -123,6 +129,7 @@
                     }
 
                     isAdmin = userId && adminsList.includes(userId);
+                    console.log("Is Admin:", isAdmin);
                     renderApp();
                 });
 
@@ -319,6 +326,7 @@
                     tableContainer.innerHTML = '<p class="text-center text-gray-400">No roster data found yet. Please ask the Raid Lead to upload data.</p>';
                 }
             }, (error) => {
+                const tableContainer = document.getElementById('roster-table-container');
                 tableContainer.innerHTML = '<p class="text-center text-red-400">Error fetching data. Please try again later.</p>';
                 console.error("Error fetching roster: ", error);
             });
@@ -335,6 +343,7 @@
                     container.innerHTML = '<p class="text-center text-gray-400">No point history found.</p>';
                 }
             }, (error) => {
+                const container = document.getElementById('point-history-container');
                 container.innerHTML = '<p class="text-center text-red-400">Error fetching point history.</p>';
                 console.error("Error fetching point history: ", error);
             });
@@ -351,6 +360,7 @@
                     container.innerHTML = '<p class="text-center text-gray-400">No loot history found.</p>';
                 }
             }, (error) => {
+                const container = document.getElementById('loot-history-container');
                 container.innerHTML = '<p class="text-center text-red-400">Error fetching loot history.</p>';
                 console.error("Error fetching loot history: ", error);
             });
@@ -520,12 +530,13 @@
 
             sortedHistory.forEach(item => {
                 const date = new Date(item.timestamp * 1000).toLocaleString(); // Convert to milliseconds
+                const qualityClass = `quality-${item.quality}`;
                 tableHTML += `
                     <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
                         <td class="p-3 text-sm whitespace-nowrap">${date}</td>
-                        <td class="p-3 text-sm">${item.name}</td>
+                        <td class="p-3 text-sm ${qualityClass}">${item.name}</td>
                         <td class="p-3 text-sm">${item.player}</td>
-                        <td class="p-3 text-sm">${item.cost}</td>
+                        <td class="p-3 text-sm">${item.points}</td>
                         <td class="p-3 text-sm">${item.awardedBy}</td>
                     </tr>
                 `;

@@ -51,7 +51,7 @@
     <!-- Main application container -->
     <div id="app" class="w-full max-w-4xl bg-[#2c2c44] rounded-2xl shadow-xl p-8 md:p-12">
         <h1 class="text-3xl md:text-4xl font-bold text-[#ff5277] mb-6 text-center">
-            Season 3 EP/GP v4
+            Season 3 EP/GP
         </h1>
         
         <!-- Status and user information display area -->
@@ -71,7 +71,6 @@
         // Import all the necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // NOTE: New imports for `collection`, `addDoc`, `getDocs`, `query`, and `deleteDoc`
         import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, addDoc, getDocs, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // The firebaseConfig object has been updated with your details.
@@ -97,6 +96,14 @@
         
         // State for sorting the roster table
         let currentSort = { column: 'pr', direction: 'desc' };
+
+        // Global state for history data and filters
+        let allPointHistory = [];
+        let allLootHistory = [];
+        let rosterData = [];
+        let pointFilter = '';
+        let lootFilter = '';
+
 
         // Helper function to show a message to the user
         function showStatusMessage(message, isError = false) {
@@ -317,13 +324,25 @@
                     </div>
 
                     <!-- Point History Section -->
-                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8">Point History</h2>
+                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8 flex items-center justify-between">
+                        Point History
+                        <div class="text-base text-gray-400 font-normal">
+                            Filter by Player:
+                            <select id="point-player-filter" class="ml-2 p-1 rounded-md bg-[#4a4a6b] text-white cursor-pointer"></select>
+                        </div>
+                    </h2>
                     <div id="point-history-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
                         <p class="text-center text-gray-400">Fetching point history...</p>
                     </div>
 
                     <!-- Loot History Section -->
-                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8">Loot History</h2>
+                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8 flex items-center justify-between">
+                        Loot History
+                        <div class="text-base text-gray-400 font-normal">
+                            Filter by Player:
+                            <select id="loot-player-filter" class="ml-2 p-1 rounded-md bg-[#4a4a6b] text-white cursor-pointer"></select>
+                        </div>
+                    </h2>
                     <div id="loot-history-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
                         <p class="text-center text-gray-400">Fetching loot history...</p>
                     </div>
@@ -344,11 +363,21 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    displayRosterTable(data.roster, tableContainer);
+                    rosterData = data.roster; // Store the roster data globally
+                    displayRosterTable(rosterData, tableContainer);
                     lastUpdatedDisplay.innerHTML = `Last Updated: ${new Date(data.lastUpdated).toLocaleString()}`;
+                    
+                    // Populate the filter dropdowns once the roster is loaded
+                    populatePlayerFilters(rosterData);
+                    
                 } else {
                     tableContainer.innerHTML = '<p class="text-center text-gray-400">No roster data found yet. Please ask the Raid Lead to upload data.</p>';
+                    rosterData = [];
                 }
+                
+                // Re-display history tables with the (possibly new) roster data
+                updatePointHistoryDisplay();
+                updateLootHistoryDisplay();
             }, (error) => {
                 const tableContainer = document.getElementById('roster-table-container');
                 tableContainer.innerHTML = '<p class="text-center text-red-400">Error fetching data. Please try again later.</p>';
@@ -356,16 +385,15 @@
             });
             
             // Set up a real-time listener for the point history
-            // NOTE: Now listening to a collection of documents, not a single document
             const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
             onSnapshot(pointHistoryCollectionRef, (querySnapshot) => {
-                const container = document.getElementById('point-history-container');
                 if (!querySnapshot.empty) {
-                    const historyArray = [];
-                    querySnapshot.forEach(doc => historyArray.push(doc.data()));
-                    displayPointHistoryTable(historyArray, container);
+                    allPointHistory = [];
+                    querySnapshot.forEach(doc => allPointHistory.push(doc.data()));
+                    updatePointHistoryDisplay();
                 } else {
-                    container.innerHTML = '<p class="text-center text-gray-400">No point history found.</p>';
+                    allPointHistory = [];
+                    updatePointHistoryDisplay();
                 }
             }, (error) => {
                 const container = document.getElementById('point-history-container');
@@ -374,24 +402,78 @@
             });
             
             // Set up a real-time listener for the loot history
-            // NOTE: Now listening to a collection of documents, not a single document
             const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
             onSnapshot(lootHistoryCollectionRef, (querySnapshot) => {
-                const container = document.getElementById('loot-history-container');
                 if (!querySnapshot.empty) {
-                    const historyArray = [];
-                    querySnapshot.forEach(doc => historyArray.push(doc.data()));
-                    displayLootHistoryTable(historyArray, container);
+                    allLootHistory = [];
+                    querySnapshot.forEach(doc => allLootHistory.push(doc.data()));
+                    updateLootHistoryDisplay();
                 } else {
-                    container.innerHTML = '<p class="text-center text-gray-400">No loot history found yet.</p>';
+                    allLootHistory = [];
+                    updateLootHistoryDisplay();
                 }
             }, (error) => {
                 const container = document.getElementById('loot-history-container');
                 container.innerHTML = '<p class="text-center text-red-400">Error fetching loot history.</p>';
                 console.error("Error fetching loot history: ", error);
             });
+
+            // Add event listeners for the filter dropdowns
+            document.getElementById('point-player-filter').addEventListener('change', (e) => {
+                pointFilter = e.target.value;
+                updatePointHistoryDisplay();
+            });
+
+            document.getElementById('loot-player-filter').addEventListener('change', (e) => {
+                lootFilter = e.target.value;
+                updateLootHistoryDisplay();
+            });
         }
         
+        // Helper function to populate the filter dropdowns
+        function populatePlayerFilters(players) {
+            const pointFilterSelect = document.getElementById('point-player-filter');
+            const lootFilterSelect = document.getElementById('loot-player-filter');
+
+            // Clear previous options
+            pointFilterSelect.innerHTML = '<option value="">All Players</option>';
+            lootFilterSelect.innerHTML = '<option value="">All Players</option>';
+
+            const playerNames = players.map(p => p.name).sort();
+            playerNames.forEach(name => {
+                pointFilterSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                lootFilterSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+            
+            // Restore the last selected values if they exist
+            pointFilterSelect.value = pointFilter;
+            lootFilterSelect.value = lootFilter;
+        }
+
+        // Helper function to update the point history display with the current filter
+        function updatePointHistoryDisplay() {
+            const container = document.getElementById('point-history-container');
+            let filteredHistory = allPointHistory;
+
+            if (pointFilter) {
+                filteredHistory = allPointHistory.filter(p => p.player === pointFilter);
+            }
+
+            displayPointHistoryTable(filteredHistory, container);
+        }
+
+        // Helper function to update the loot history display with the current filter
+        function updateLootHistoryDisplay() {
+            const container = document.getElementById('loot-history-container');
+            let filteredHistory = allLootHistory;
+
+            if (lootFilter) {
+                filteredHistory = allLootHistory.filter(l => l.player === lootFilter);
+            }
+
+            displayLootHistoryTable(filteredHistory, container);
+        }
+
         // A helper function to build and display the roster table with interactive sorting
         function displayRosterTable(rosterData, container) {
             if (!rosterData || rosterData.length === 0) {
@@ -513,12 +595,13 @@
 
             sortedHistory.forEach(point => {
                 const date = new Date(point.timestamp * 1000).toLocaleString(); // Convert to milliseconds
+                const reasonTitle = point.note ? `title="${point.note}"` : ''; // Add a tooltip with the note if it exists
                 tableHTML += `
                     <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
                         <td class="p-3 text-sm whitespace-nowrap">${date}</td>
                         <td class="p-3 text-sm">${point.player}</td>
                         <td class="p-3 text-sm">${point.points}</td>
-                        <td class="p-3 text-sm">${point.reason}</td>
+                        <td class="p-3 text-sm" ${reasonTitle}>${point.reason}</td>
                         <td class="p-3 text-sm">${point.awardedBy}</td>
                     </tr>
                 `;

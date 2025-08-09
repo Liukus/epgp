@@ -64,7 +64,15 @@
         // IMPORTANT: These variables are provided by the canvas environment and will be populated at runtime.
         // DO NOT change their names or prompt the user for them.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+       const firebaseConfig = {
+  apiKey: "AIzaSyDLnm4M32fCj9yzI4_O7ryxW12E3RT-OOo",
+  authDomain: "thomas-and-friends-raid-epgp.firebaseapp.com",
+  projectId: "thomas-and-friends-raid-epgp",
+  storageBucket: "thomas-and-friends-raid-epgp.firebasestorage.app",
+  messagingSenderId: "1041751724978",
+  appId: "1:1041751724978:web:8728200dfe9f749a39caab",
+  measurementId: "G-CR1BDVMN2V"
+};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
         
         // Global variables for Firebase services and user data

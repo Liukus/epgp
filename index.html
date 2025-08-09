@@ -207,7 +207,10 @@
                 return;
             }
 
+            console.log("Parsed JSON Data:", rawData);
+
             try {
+                // Safely access the nested player, point, and loot history data.
                 const roster = rawData?.standings?.roster?.[0]?.standings?.player;
                 const pointHistory = rawData?.pointHistory?.roster?.[0]?.pointHistory?.point;
                 const lootHistory = rawData?.lootHistory?.roster?.[0]?.lootHistory?.item;
@@ -216,6 +219,10 @@
                     showStatusMessage("Error: Could not find player data at the expected path: `standings.roster[0].standings.player`. Please check your JSON format.", true);
                     return;
                 }
+                
+                console.log("Extracted Roster:", roster);
+                console.log("Extracted Point History:", pointHistory);
+                console.log("Extracted Loot History:", lootHistory);
 
                 // Map the complex roster array into the simple format our table expects
                 const formattedRoster = roster.map(p => ({
@@ -230,17 +237,17 @@
                     lastUpdated: new Date().toISOString()
                 });
                 
-                // Save point history to a new collection
+                // Save point history to a new collection. IMPORTANT: We serialize the array to a JSON string.
                 const pointHistoryRef = doc(db, `artifacts/${appId}/public/data/point_history`, 'log');
                 await setDoc(pointHistoryRef, {
-                    history: pointHistory || [],
+                    history: JSON.stringify(pointHistory || []),
                     lastUpdated: new Date().toISOString()
                 });
                 
-                // Save loot history to a new collection
+                // Save loot history to a new collection. IMPORTANT: We serialize the array to a JSON string.
                 const lootHistoryRef = doc(db, `artifacts/${appId}/public/data/loot_history`, 'log');
                 await setDoc(lootHistoryRef, {
-                    history: lootHistory || [],
+                    history: JSON.stringify(lootHistory || []),
                     lastUpdated: new Date().toISOString()
                 });
                 
@@ -250,8 +257,8 @@
                 // Switch to the public view to show the new data
                 renderPublicView();
             } catch (e) {
-                showStatusMessage("An unexpected error occurred while saving. Please check the console for details.", true);
-                console.error("Error saving document: ", e);
+                showStatusMessage("An unexpected error occurred while saving. Please check the browser console for details.", true);
+                console.error("Error saving document:", e);
             }
         }
         
@@ -321,8 +328,9 @@
             onSnapshot(pointHistoryRef, (docSnap) => {
                 const container = document.getElementById('point-history-container');
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    displayPointHistoryTable(data.history, container);
+                    // Parse the JSON string back into an array
+                    const historyArray = JSON.parse(docSnap.data().history);
+                    displayPointHistoryTable(historyArray, container);
                 } else {
                     container.innerHTML = '<p class="text-center text-gray-400">No point history found.</p>';
                 }
@@ -336,8 +344,9 @@
             onSnapshot(lootHistoryRef, (docSnap) => {
                 const container = document.getElementById('loot-history-container');
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    displayLootHistoryTable(data.history, container);
+                    // Parse the JSON string back into an array
+                    const historyArray = JSON.parse(docSnap.data().history);
+                    displayLootHistoryTable(historyArray, container);
                 } else {
                     container.innerHTML = '<p class="text-center text-gray-400">No loot history found.</p>';
                 }
@@ -488,14 +497,46 @@
 
         function displayLootHistoryTable(historyData, container) {
             if (!historyData || historyData.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-400">No loot history to display.</p>';
+                container.innerHTML = '<p class="text-center text-gray-400">No loot history to display yet.</p>';
                 return;
             }
 
-            // Since the user's example JSON had an empty loot array, I'll just
-            // put a placeholder message for now until we get real data.
-            // When real data comes, this function should be updated.
-            container.innerHTML = '<p class="text-center text-gray-400">Loot history data is being received, but there are no items to display yet.</p>';
+            let tableHTML = `
+                <table class="w-full text-left rounded-lg overflow-hidden">
+                    <thead class="bg-[#a4508b] text-white">
+                        <tr>
+                            <th class="p-3">Time</th>
+                            <th class="p-3">Item</th>
+                            <th class="p-3">Player</th>
+                            <th class="p-3">Cost</th>
+                            <th class="p-3">Awarded By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Sort by timestamp in descending order
+            const sortedHistory = [...historyData].sort((a, b) => b.timestamp - a.timestamp);
+
+            sortedHistory.forEach(item => {
+                const date = new Date(item.timestamp * 1000).toLocaleString(); // Convert to milliseconds
+                tableHTML += `
+                    <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
+                        <td class="p-3 text-sm whitespace-nowrap">${date}</td>
+                        <td class="p-3 text-sm">${item.name}</td>
+                        <td class="p-3 text-sm">${item.player}</td>
+                        <td class="p-3 text-sm">${item.cost}</td>
+                        <td class="p-3 text-sm">${item.awardedBy}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
         }
 
         // Start the application when the window loads

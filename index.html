@@ -51,7 +51,7 @@
     <!-- Main application container -->
     <div id="app" class="w-full max-w-4xl bg-[#2c2c44] rounded-2xl shadow-xl p-8 md:p-12">
         <h1 class="text-3xl md:text-4xl font-bold text-[#ff5277] mb-6 text-center">
-            Season 3 EP/GP
+            Season 3 EP/GP v4
         </h1>
         
         <!-- Status and user information display area -->
@@ -563,7 +563,7 @@
                 // Construct the Wowhead-compatible link using the actual item.id from the data.
                 // The new check ensures we only create a link if the id exists.
                 const itemLink = item.id ? 
-                    `<a href="https://www.wowhead.com/classic/item=${item.id}" class="${qualityClass}" data-wh-icon-size="small" data-wh-rename-link="true">${item.name}</a>` :
+                    `<a href="https://www.wowhead.com/item=${item.id}" class="${qualityClass}" data-wh-icon-size="small" data-wh-rename-link="true">${item.name}</a>` :
                     `<span class="${qualityClass}">${item.name}</span>`;
                 
                 tableHTML += `

@@ -61,19 +61,21 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // IMPORTANT: These variables are provided by the canvas environment and will be populated at runtime.
-        // DO NOT change their names or prompt the user for them.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-       const firebaseConfig = {
-  apiKey: "AIzaSyDLnm4M32fCj9yzI4_O7ryxW12E3RT-OOo",
-  authDomain: "thomas-and-friends-raid-epgp.firebaseapp.com",
-  projectId: "thomas-and-friends-raid-epgp",
-  storageBucket: "thomas-and-friends-raid-epgp.firebasestorage.app",
-  messagingSenderId: "1041751724978",
-  appId: "1:1041751724978:web:8728200dfe9f749a39caab",
-  measurementId: "G-CR1BDVMN2V"
-};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+        // IMPORTANT: Replace the following configuration with your actual Firebase project details.
+        // You can find this object in your Firebase console under Project Settings > Your apps.
+        const firebaseConfig = {
+          apiKey: "AIzaSyDLnm4M32fCj9yzI4_O7ryxW12E3RT-OOo",
+          authDomain: "thomas-and-friends-raid-epgp.firebaseapp.com",
+          projectId: "thomas-and-friends-raid-epgp",
+          storageBucket: "thomas-and-friends-raid-epgp.firebasestorage.app",
+          messagingSenderId: "1041751724978",
+          appId: "1:1041751724978:web:8728200dfe9f749a39caab",
+          measurementId: "G-CR1BDVMN2V"
+        };
+
+        // Your application ID, used for the Firestore path.
+        // You can manually set this to the ID you provided earlier.
+        const appId = "t-and-f-epgp";
         
         // Global variables for Firebase services and user data
         let db;

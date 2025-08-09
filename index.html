@@ -509,17 +509,6 @@
             container.innerHTML = tableHTML;
         }
 
-        // Helper function to get a Wowhead item ID.
-        // NOTE: This is a placeholder. You'll need to update your addon JSON to include the item ID
-        // for this to work correctly, or create a lookup table for item names to IDs.
-        function getItemId(itemName) {
-            // Placeholder logic: a real-world implementation would look up the ID from the item name.
-            // For now, this just returns a static ID for demonstration.
-            // Example item: Flask of the Titans (ID 13511)
-            const mockItemId = "13511";
-            return mockItemId;
-        }
-
         function displayLootHistoryTable(historyData, container) {
             if (!historyData || historyData.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-400">No loot history to display yet.</p>';
@@ -546,10 +535,9 @@
             sortedHistory.forEach(item => {
                 const date = new Date(item.timestamp * 1000).toLocaleString(); // Convert to milliseconds
                 const qualityClass = `quality-${item.quality}`;
-                const itemId = getItemId(item.name); // Get the item ID using the helper function
                 
-                // Construct the Wowhead-compatible link
-                const itemLink = `<a href="https://www.wowhead.com/classic/item=${itemId}" class="${qualityClass}" data-wh-icon-size="small" data-wh-rename-link="true">${item.name}</a>`;
+                // Construct the Wowhead-compatible link using the actual item.itemId from the data
+                const itemLink = `<a href="https://www.wowhead.com/classic/item=${item.itemId}" class="${qualityClass}" data-wh-icon-size="small" data-wh-rename-link="true">${item.name}</a>`;
                 
                 tableHTML += `
                     <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">

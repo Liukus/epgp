@@ -23,8 +23,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a2e; /* Dark theme */
-            color: #e0e0e0;
+            background-color: #0d0d0d; /* Almost black */
+            color: #f5f5f5;
         }
         
         /* A simple scrollbar style for the table */
@@ -32,37 +32,37 @@
             height: 8px;
         }
         .table-container::-webkit-scrollbar-track {
-            background: #2c2c44;
+            background: #1c1c1c;
             border-radius: 10px;
         }
         .table-container::-webkit-scrollbar-thumb {
-            background: #a4508b;
+            background: #e32636;
             border-radius: 10px;
         }
 
-        .quality-6 { color: #ff8000; } /* Legendary */
-        .quality-5 { color: #a335ee; } /* Epic */
-        .quality-4 { color: #0070dd; } /* Rare */
-        .quality-3 { color: #1eff00; } /* Uncommon */
+        .quality-6 { color: #f59e0b; } /* Legendary - Amber */
+        .quality-5 { color: #a855f7; } /* Epic - Purple */
+        .quality-4 { color: #2563eb; } /* Rare - Blue */
+        .quality-3 { color: #10b981; } /* Uncommon - Emerald */
     </style>
 </head>
 <body class="p-6 md:p-10 flex flex-col items-center justify-center min-h-screen">
 
     <!-- Main application container -->
-    <div id="app" class="w-full max-w-4xl bg-[#2c2c44] rounded-2xl shadow-xl p-8 md:p-12">
-        <h1 class="text-3xl md:text-4xl font-bold text-[#ff5277] mb-6 text-center">
+    <div id="app" class="w-full max-w-4xl bg-[#1c1c1c] rounded-2xl shadow-xl p-8 md:p-12">
+        <h1 class="text-3xl md:text-4xl font-bold text-[#e32636] mb-6 text-center">
             Season 3 EP/GP
         </h1>
         
         <!-- Status and user information display area -->
-        <div id="status-message" class="text-center text-sm md:text-base mb-4 font-bold text-[#e0e0e0]">
+        <div id="status-message" class="text-center text-sm md:text-base mb-4 font-bold text-gray-300">
             <!-- Status messages, user info, and login/logout links will appear here -->
         </div>
 
         <!-- The main application view will be dynamically rendered here -->
         <div id="app-view">
             <!-- This content will be replaced by either the admin or public view -->
-            <p class="text-center text-[#9ca3af]">Loading...</p>
+            <p class="text-center text-gray-400">Loading...</p>
         </div>
     </div>
     
@@ -198,17 +198,17 @@
             appView.innerHTML = `
                 <div class="space-y-4">
                     <p class="text-center text-gray-400 text-sm">
-                        Welcome, Raid Lead! Your User ID is: <span class="font-mono text-[#a4508b] text-xs md:text-sm break-all">${userId}</span>
+                        Welcome, Raid Lead! Your User ID is: <span class="font-mono text-[#e32636] text-xs md:text-sm break-all">${userId}</span>
                         <br>
                         Add this ID to the 'admins' document in your Firestore project to enable updates.
                     </p>
-                    <textarea id="data-paste-area" class="w-full h-48 p-4 bg-[#3b3b5c] text-[#e0e0e0] border-2 border-[#a4508b] rounded-lg focus:outline-none focus:border-[#ff5277]" placeholder="Paste your EP/GP addon JSON data here. The app is looking for a nested structure like: rawData.standings.roster[0].standings.player..."></textarea>
-                    <button id="save-button" class="w-full bg-[#ff5277] text-white font-bold py-3 rounded-lg hover:bg-[#ff3b64] transition-colors">
+                    <textarea id="data-paste-area" class="w-full h-48 p-4 bg-gray-900 text-gray-200 border-2 border-[#e32636] rounded-lg focus:outline-none focus:border-[#e32636]" placeholder="Paste your EP/GP addon JSON data here. The app is looking for a nested structure like: rawData.standings.roster[0].standings.player..."></textarea>
+                    <button id="save-button" class="w-full bg-[#e32636] text-white font-bold py-3 rounded-lg hover:bg-red-600 transition-colors">
                         Save Roster Data
                     </button>
                     <p class="text-center text-gray-400 mt-4">
-                        <a href="#" id="view-roster-link" class="underline hover:text-[#ff5277]">View the public roster</a> | 
-                        <a href="#" id="logout-link" class="underline hover:text-[#ff5277]">Logout</a>
+                        <a href="#" id="view-roster-link" class="underline hover:text-[#e32636]">View the public roster</a> | 
+                        <a href="#" id="logout-link" class="underline hover:text-[#e32636]">Logout</a>
                     </p>
                 </div>
             `;
@@ -305,8 +305,8 @@
             const appView = document.getElementById('app-view');
             
             let authLink = isAdmin ?
-                `<a href="#" id="logout-link" class="underline hover:text-[#ff5277]">Logout</a>` :
-                `<a href="#" id="admin-login-link" class="underline hover:text-[#ff5277]">Are you the Raid Lead? Log in to update.</a>`;
+                `<a href="#" id="logout-link" class="underline hover:text-[#e32636]">Logout</a>` :
+                `<a href="#" id="admin-login-link" class="underline hover:text-[#e32636]">Are you the Raid Lead? Log in to update.</a>`;
 
             appView.innerHTML = `
                 <div class="space-y-6">
@@ -318,32 +318,32 @@
                     </div>
                     
                     <!-- Roster Table Section -->
-                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4">Roster</h2>
-                    <div id="roster-table-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
+                    <h2 class="text-2xl font-bold text-[#e32636] mb-4">Roster</h2>
+                    <div id="roster-table-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto table-container">
                         <p class="text-center text-gray-400">Fetching roster data...</p>
                     </div>
 
                     <!-- Point History Section -->
-                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8 flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-[#e32636] mb-4 mt-8 flex items-center justify-between">
                         Point History
                         <div class="text-base text-gray-400 font-normal">
                             Filter by Player:
-                            <select id="point-player-filter" class="ml-2 p-1 rounded-md bg-[#4a4a6b] text-white cursor-pointer"></select>
+                            <select id="point-player-filter" class="ml-2 p-1 rounded-md bg-gray-800 text-white cursor-pointer"></select>
                         </div>
                     </h2>
-                    <div id="point-history-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
+                    <div id="point-history-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto table-container">
                         <p class="text-center text-gray-400">Fetching point history...</p>
                     </div>
 
                     <!-- Loot History Section -->
-                    <h2 class="text-2xl font-bold text-[#a4508b] mb-4 mt-8 flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-[#e32636] mb-4 mt-8 flex items-center justify-between">
                         Loot History
                         <div class="text-base text-gray-400 font-normal">
                             Filter by Player:
-                            <select id="loot-player-filter" class="ml-2 p-1 rounded-md bg-[#4a4a6b] text-white cursor-pointer"></select>
+                            <select id="loot-player-filter" class="ml-2 p-1 rounded-md bg-gray-800 text-white cursor-pointer"></select>
                         </div>
                     </h2>
-                    <div id="loot-history-container" class="bg-[#3b3b5c] p-4 rounded-lg overflow-x-auto table-container">
+                    <div id="loot-history-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto table-container">
                         <p class="text-center text-gray-400">Fetching loot history...</p>
                     </div>
                 </div>
@@ -520,7 +520,7 @@
 
             let tableHTML = `
                 <table class="w-full text-left rounded-lg overflow-hidden">
-                    <thead class="bg-[#a4508b] text-white">
+                    <thead class="bg-[#e32636] text-white">
                         <tr>
                             <th id="sort-name" class="p-3 cursor-pointer select-none whitespace-nowrap">Player${getSortIcon('name')}</th>
                             <th id="sort-ep" class="p-3 cursor-pointer select-none whitespace-nowrap">EP${getSortIcon('ep')}</th>
@@ -533,7 +533,7 @@
             
             mutableRoster.forEach(player => {
                 tableHTML += `
-                    <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
+                    <tr class="border-b border-gray-700 last:border-b-0 even:bg-gray-800">
                         <td class="p-3">${player.name}</td>
                         <td class="p-3">${player.ep}</td>
                         <td class="p-3">${player.gp}</td>
@@ -578,7 +578,7 @@
 
             let tableHTML = `
                 <table class="w-full text-left rounded-lg overflow-hidden">
-                    <thead class="bg-[#a4508b] text-white">
+                    <thead class="bg-[#e32636] text-white">
                         <tr>
                             <th class="p-3">Time</th>
                             <th class="p-3">Player</th>
@@ -597,7 +597,7 @@
                 const date = new Date(point.timestamp * 1000).toLocaleString(); // Convert to milliseconds
                 const reasonTitle = point.note ? `title="${point.note}"` : ''; // Add a tooltip with the note if it exists
                 tableHTML += `
-                    <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
+                    <tr class="border-b border-gray-700 last:border-b-0 even:bg-gray-800">
                         <td class="p-3 text-sm whitespace-nowrap">${date}</td>
                         <td class="p-3 text-sm">${point.player}</td>
                         <td class="p-3 text-sm">${point.points}</td>
@@ -624,7 +624,7 @@
 
             let tableHTML = `
                 <table class="w-full text-left rounded-lg overflow-hidden">
-                    <thead class="bg-[#a4508b] text-white">
+                    <thead class="bg-[#e32636] text-white">
                         <tr>
                             <th class="p-3">Time</th>
                             <th class="p-3">Item</th>
@@ -650,7 +650,7 @@
                     `<span class="${qualityClass}">${item.name}</span>`;
                 
                 tableHTML += `
-                    <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
+                    <tr class="border-b border-gray-700 last:border-b-0 even:bg-gray-800">
                         <td class="p-3 text-sm whitespace-nowrap">${date}</td>
                         <td class="p-3 text-sm">${itemLink}</td>
                         <td class="p-3 text-sm">${item.player}</td>

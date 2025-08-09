@@ -51,7 +51,7 @@
     <!-- Main application container -->
     <div id="app" class="w-full max-w-4xl bg-[#2c2c44] rounded-2xl shadow-xl p-8 md:p-12">
         <h1 class="text-3xl md:text-4xl font-bold text-[#ff5277] mb-6 text-center">
-            Season 3 EP/GP v3
+            Season 3 EP/GP
         </h1>
         
         <!-- Status and user information display area -->
@@ -71,7 +71,8 @@
         // Import all the necessary Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // NOTE: New imports for `collection`, `addDoc`, `getDocs`, `query`, and `deleteDoc`
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, addDoc, getDocs, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // The firebaseConfig object has been updated with your details.
         const firebaseConfig = {
@@ -85,7 +86,6 @@
         };
 
         // Your application ID, used for the Firestore path.
-        // This is a human-readable ID that matches the one in your security rules.
         const appId = "t-and-f-epgp";
         
         // Global variables for Firebase services and user data
@@ -173,6 +173,17 @@
                 showStatusMessage("Logout failed. Please try again.", true);
             }
         }
+
+        // A helper function to clear all documents from a collection
+        async function clearCollection(collectionRef) {
+            const q = query(collectionRef);
+            const querySnapshot = await getDocs(q);
+            const deletePromises = [];
+            querySnapshot.forEach((doc) => {
+                deletePromises.push(deleteDoc(doc.ref));
+            });
+            await Promise.all(deletePromises);
+        }
         
         // ======================== ADMIN VIEW ========================
         function renderAdminView() {
@@ -235,6 +246,7 @@
                 console.log("Extracted Point History:", pointHistory);
                 console.log("Extracted Loot History:", lootHistory);
 
+                // --- 1. Save Roster Data ---
                 // Map the complex roster array into the simple format our table expects
                 const formattedRoster = roster.map(p => ({
                     name: p.name,
@@ -248,19 +260,27 @@
                     lastUpdated: new Date().toISOString()
                 });
                 
-                // Save point history to a new collection. IMPORTANT: We serialize the array to a JSON string.
-                const pointHistoryRef = doc(db, `artifacts/${appId}/public/data/point_history`, 'log');
-                await setDoc(pointHistoryRef, {
-                    history: JSON.stringify(pointHistory || []),
-                    lastUpdated: new Date().toISOString()
-                });
+                // --- 2. Save Point History Data ---
+                const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
+                // Clear the existing collection to prevent duplicates
+                await clearCollection(pointHistoryCollectionRef);
                 
-                // Save loot history to a new collection. IMPORTANT: We serialize the array to a JSON string.
-                const lootHistoryRef = doc(db, `artifacts/${appId}/public/data/loot_history`, 'log');
-                await setDoc(lootHistoryRef, {
-                    history: JSON.stringify(lootHistory || []),
-                    lastUpdated: new Date().toISOString()
-                });
+                if (pointHistory && Array.isArray(pointHistory)) {
+                    // Iterate and add each point history entry as a separate document
+                    const addPromises = pointHistory.map(point => addDoc(pointHistoryCollectionRef, point));
+                    await Promise.all(addPromises);
+                }
+                
+                // --- 3. Save Loot History Data ---
+                const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
+                // Clear the existing collection to prevent duplicates
+                await clearCollection(lootHistoryCollectionRef);
+                
+                if (lootHistory && Array.isArray(lootHistory)) {
+                    // Iterate and add each loot history entry as a separate document
+                    const addPromises = lootHistory.map(item => addDoc(lootHistoryCollectionRef, item));
+                    await Promise.all(addPromises);
+                }
                 
                 showStatusMessage("Roster, Point History, and Loot History data saved successfully!", false);
                 dataArea.value = ''; // Clear the text area after successful save
@@ -336,12 +356,13 @@
             });
             
             // Set up a real-time listener for the point history
-            const pointHistoryRef = doc(db, `artifacts/${appId}/public/data/point_history`, 'log');
-            onSnapshot(pointHistoryRef, (docSnap) => {
+            // NOTE: Now listening to a collection of documents, not a single document
+            const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
+            onSnapshot(pointHistoryCollectionRef, (querySnapshot) => {
                 const container = document.getElementById('point-history-container');
-                if (docSnap.exists()) {
-                    // Parse the JSON string back into an array
-                    const historyArray = JSON.parse(docSnap.data().history);
+                if (!querySnapshot.empty) {
+                    const historyArray = [];
+                    querySnapshot.forEach(doc => historyArray.push(doc.data()));
                     displayPointHistoryTable(historyArray, container);
                 } else {
                     container.innerHTML = '<p class="text-center text-gray-400">No point history found.</p>';
@@ -353,15 +374,16 @@
             });
             
             // Set up a real-time listener for the loot history
-            const lootHistoryRef = doc(db, `artifacts/${appId}/public/data/loot_history`, 'log');
-            onSnapshot(lootHistoryRef, (docSnap) => {
+            // NOTE: Now listening to a collection of documents, not a single document
+            const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
+            onSnapshot(lootHistoryCollectionRef, (querySnapshot) => {
                 const container = document.getElementById('loot-history-container');
-                if (docSnap.exists()) {
-                    // Parse the JSON string back into an array
-                    const historyArray = JSON.parse(docSnap.data().history);
+                if (!querySnapshot.empty) {
+                    const historyArray = [];
+                    querySnapshot.forEach(doc => historyArray.push(doc.data()));
                     displayLootHistoryTable(historyArray, container);
                 } else {
-                    container.innerHTML = '<p class="text-center text-gray-400">No loot history found.</p>';
+                    container.innerHTML = '<p class="text-center text-gray-400">No loot history found yet.</p>';
                 }
             }, (error) => {
                 const container = document.getElementById('loot-history-container');
@@ -465,6 +487,7 @@
             });
         }
         
+        // NOTE: This function now receives an array of point objects directly
         function displayPointHistoryTable(historyData, container) {
             if (!historyData || historyData.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-400">No point history to display.</p>';
@@ -509,6 +532,7 @@
             container.innerHTML = tableHTML;
         }
 
+        // NOTE: This function now receives an array of loot objects directly
         function displayLootHistoryTable(historyData, container) {
             if (!historyData || historyData.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-400">No loot history to display yet.</p>';
@@ -534,10 +558,13 @@
 
             sortedHistory.forEach(item => {
                 const date = new Date(item.timestamp * 1000).toLocaleString(); // Convert to milliseconds
-                const qualityClass = `quality-${item.quality}`;
+                const qualityClass = item.quality ? `quality-${item.quality}` : '';
                 
-                // Construct the Wowhead-compatible link using the actual item.itemId from the data
-                const itemLink = `<a href="https://www.wowhead.com/classic/item=${item.itemId}" class="${qualityClass}" data-wh-icon-size="small" data-wh-rename-link="true">${item.name}</a>`;
+                // Construct the Wowhead-compatible link using the actual item.id from the data.
+                // The new check ensures we only create a link if the id exists.
+                const itemLink = item.id ? 
+                    `<a href="https://www.wowhead.com/classic/item=${item.id}" class="${qualityClass}" data-wh-icon-size="small" data-wh-rename-link="true">${item.name}</a>` :
+                    `<span class="${qualityClass}">${item.name}</span>`;
                 
                 tableHTML += `
                     <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">

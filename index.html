@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thomas and Friends S3 EPGP</title>
+    <title>Thomas and Friends S3 EP/GP</title>
     
     <!-- Load Tailwind CSS for modern, responsive styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,6 +13,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     
+    <!-- Include Heroicons for the sort arrows -->
+    <script src="https://unpkg.com/heroicons@2.1.3/dist/24/outline/index.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -82,6 +85,9 @@
         let userId = null;
         let isAdmin = false;
         let adminsList = [];
+        
+        // State for sorting the table
+        let currentSort = { column: 'pr', direction: 'desc' };
 
         // Helper function to show a message to the user
         function showStatusMessage(message, isError = false) {
@@ -282,39 +288,70 @@
             });
         }
         
-        // A helper function to build and display the roster table
+        // A helper function to build and display the roster table with interactive sorting
         function displayRosterTable(rosterData, container) {
             if (!rosterData || rosterData.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-400">No roster data to display.</p>';
                 return;
             }
+
+            // Create a copy to avoid mutating the original data
+            const mutableRoster = [...rosterData].map(p => ({
+                ...p,
+                // Ensure PR is always a number for sorting
+                pr: p.gp > 0 ? (p.ep / p.gp) : -1 // Use a sentinel value for N/A
+            }));
             
+            // Sort the roster based on the current sort state
+            mutableRoster.sort((a, b) => {
+                let aVal, bVal;
+
+                if (currentSort.column === 'pr') {
+                    aVal = a.pr;
+                    bVal = b.pr;
+                } else if (currentSort.column === 'name') {
+                    aVal = a.name.toLowerCase();
+                    bVal = b.name.toLowerCase();
+                } else {
+                    aVal = a[currentSort.column];
+                    bVal = b[currentSort.column];
+                }
+
+                if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            // Function to get the sort icon for a given column
+            const getSortIcon = (column) => {
+                if (currentSort.column === column) {
+                    return currentSort.direction === 'asc' ? 
+                        `<svg class="w-4 h-4 ml-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>` :
+                        `<svg class="w-4 h-4 ml-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>`;
+                }
+                return '';
+            };
+
             let tableHTML = `
                 <table class="w-full text-left rounded-lg overflow-hidden">
                     <thead class="bg-[#a4508b] text-white">
                         <tr>
-                            <th class="p-3">Player</th>
-                            <th class="p-3">EP</th>
-                            <th class="p-3">GP</th>
-                            <th class="p-3">PR</th>
+                            <th id="sort-name" class="p-3 cursor-pointer select-none whitespace-nowrap">Player${getSortIcon('name')}</th>
+                            <th id="sort-ep" class="p-3 cursor-pointer select-none whitespace-nowrap">EP${getSortIcon('ep')}</th>
+                            <th id="sort-gp" class="p-3 cursor-pointer select-none whitespace-nowrap">GP${getSortIcon('gp')}</th>
+                            <th id="sort-pr" class="p-3 cursor-pointer select-none whitespace-nowrap">PR${getSortIcon('pr')}</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             
-            // Sort the roster by EP/GP ratio (PR)
-            const sortedRoster = [...rosterData].map(p => ({
-                ...p,
-                pr: p.gp > 0 ? (p.ep / p.gp).toFixed(2) : 'N/A'
-            })).sort((a, b) => b.pr - a.pr);
-            
-            sortedRoster.forEach(player => {
+            mutableRoster.forEach(player => {
                 tableHTML += `
                     <tr class="border-b border-[#4a4a6b] last:border-b-0 even:bg-[#3b3b5c]">
                         <td class="p-3">${player.name}</td>
                         <td class="p-3">${player.ep}</td>
                         <td class="p-3">${player.gp}</td>
-                        <td class="p-3">${player.pr}</td>
+                        <td class="p-3">${player.pr === -1 ? 'N/A' : player.pr.toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -325,6 +362,25 @@
             `;
             
             container.innerHTML = tableHTML;
+
+            // Attach event listeners to the headers for sorting
+            ['name', 'ep', 'gp', 'pr'].forEach(column => {
+                const header = document.getElementById(`sort-${column}`);
+                if (header) {
+                    header.addEventListener('click', () => {
+                        // If it's the same column, toggle the direction. Otherwise, default to descending.
+                        if (currentSort.column === column) {
+                            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            currentSort.column = column;
+                            currentSort.direction = 'desc'; // Default sort direction
+                        }
+                        
+                        // Re-render the table with the new sort state
+                        displayRosterTable(rosterData, container);
+                    });
+                }
+            });
         }
 
         // Start the application when the window loads

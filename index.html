@@ -88,18 +88,25 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Fetch the list of admin UIDs from Firestore once
-                const adminsRef = doc(db, `artifacts/${appId}/public/data/roles`, 'admins');
-                const docSnap = await getDoc(adminsRef);
-                if (docSnap.exists()) {
-                    adminsList = docSnap.data().uids;
-                } else {
-                    console.error("Admin UIDs document not found.");
-                }
-
-                // Listen for authentication state changes
+                // Listen for authentication state changes and handle all logic from here
                 onAuthStateChanged(auth, async (user) => {
                     userId = user ? user.uid : null;
+                    
+                    try {
+                        // Fetch the list of admin UIDs from Firestore only after auth state is known
+                        const adminsRef = doc(db, `artifacts/${appId}/public/data/roles`, 'admins');
+                        const docSnap = await getDoc(adminsRef);
+                        if (docSnap.exists()) {
+                            adminsList = docSnap.data().uids;
+                        } else {
+                            console.error("Admin UIDs document not found.");
+                            adminsList = [];
+                        }
+                    } catch (error) {
+                        console.error("Error fetching admin list:", error);
+                        adminsList = [];
+                    }
+
                     isAdmin = userId && adminsList.includes(userId);
                     renderApp();
                 });
@@ -150,7 +157,7 @@
                         <br>
                         Add this ID to the 'admins' document in your Firestore project to enable updates.
                     </p>
-                    <textarea id="data-paste-area" class="w-full h-48 p-4 bg-[#3b3b5c] text-[#e0e0e0] border-2 border-[#a4508b] rounded-lg focus:outline-none focus:border-[#ff5277]" placeholder="Paste your EP/GP JSON data here..."></textarea>
+                    <textarea id="data-paste-area" class="w-full h-48 p-4 bg-[#3b3b5c] text-[#e0e0e0] border-2 border-[#a4508b] rounded-lg focus:outline-none focus:border-[#ff5277]" placeholder="Paste your EP/GP JSON data here. The app will extract the 'name', 'points', and 'spent' values from the nested 'standings' object..."></textarea>
                     <button id="save-button" class="w-full bg-[#ff5277] text-white font-bold py-3 rounded-lg hover:bg-[#ff3b64] transition-colors">
                         Save Roster Data
                     </button>
@@ -177,11 +184,27 @@
             }
 
             try {
-                const data = JSON.parse(dataString);
+                const rawData = JSON.parse(dataString);
+                
+                // Safely access the nested player data
+                const playerArray = rawData?.standings?.roster?.[0]?.standings?.player;
+
+                if (!playerArray) {
+                    showStatusMessage("Error: Could not find player data in the pasted JSON. Please check the format.", true);
+                    return;
+                }
+
+                // Map the complex array into the simple format our table expects
+                const formattedRoster = playerArray.map(p => ({
+                    name: p.name,
+                    ep: p.points,
+                    gp: p.spent
+                }));
+
                 const rosterRef = doc(db, `artifacts/${appId}/public/data/rosters`, 'guild_roster');
                 
                 await setDoc(rosterRef, {
-                    roster: data.roster, // Assuming the JSON has a 'roster' key
+                    roster: formattedRoster,
                     lastUpdated: new Date().toISOString()
                 });
                 

@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      # Give the GITHUB_TOKEN write permissions to the repository contents
+      contents: write 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

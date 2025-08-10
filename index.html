@@ -77,7 +77,9 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, addDoc, getDocs, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // The firebaseConfig object has been updated with your details.
+        // IMPORTANT SECURITY NOTE: This API key is publicly visible in the page source.
+        // It is crucial to have strict Firebase security rules to prevent any abuse.
+        // Your rules should only allow authenticated users (admins) to write data.
         const firebaseConfig = {
           apiKey: "AIzaSyApI7xjgg0j_YdiYuKRsdzWaCjBLz1stls",
           authDomain: "thomas-and-friends-raid-epgp.firebaseapp.com",
@@ -87,7 +89,7 @@
           appId: "1:104171724978:web:8728200dfe9f749a39caab",
           measurementId: "G-CR1BDVMN2V"
         };
-
+        
         // Your application ID, used for the Firestore path.
         const appId = "t-and-f-epgp";
         
@@ -126,7 +128,6 @@
                 // Listen for authentication state changes and handle all logic from here
                 onAuthStateChanged(auth, async (user) => {
                     userId = user ? user.uid : null;
-                    console.log("Auth state changed. User ID:", userId);
                     
                     try {
                         // Fetch the list of admin UIDs from Firestore only after auth state is known
@@ -135,16 +136,13 @@
                         if (docSnap.exists()) {
                             adminsList = docSnap.data().uids;
                         } else {
-                            console.error("Admin UIDs document not found.");
                             adminsList = [];
                         }
                     } catch (error) {
-                        console.error("Error fetching admin list:", error);
                         adminsList = [];
                     }
 
                     isAdmin = userId && adminsList.includes(userId);
-                    console.log("Is Admin:", isAdmin);
                     renderApp();
                 });
 
@@ -169,8 +167,6 @@
             try {
                 await signInWithPopup(auth, provider);
             } catch (error) {
-                console.error("Error during sign-in:", error);
-                // The new, more descriptive error message will be shown on the page
                 showStatusMessage("Login failed. This may be due to an incorrect Firebase configuration or because your app's domain is not on the list of authorized domains in your Firebase project.", true);
             }
         }
@@ -180,7 +176,6 @@
                 await signOut(auth);
                 showStatusMessage("You have been signed out.", false);
             } catch (error) {
-                console.error("Error during sign-out:", error);
                 showStatusMessage("Logout failed. Please try again.", true);
             }
         }
@@ -201,11 +196,6 @@
             const appView = document.getElementById('app-view');
             appView.innerHTML = `
                 <div class="space-y-4">
-                    <p class="text-center text-gray-400 text-sm">
-                        Welcome, Raid Lead! Your User ID is: <span class="font-mono text-[#e32636] text-xs md:text-sm break-all">${userId}</span>
-                        <br>
-                        Add this ID to the 'admins' document in your Firestore project to enable updates.
-                    </p>
                     <textarea id="data-paste-area" class="w-full h-48 p-4 bg-gray-900 text-gray-200 border-2 border-[#e32636] rounded-lg focus:outline-none focus:border-[#e32636]" placeholder="Paste your EP/GP addon JSON data here. The app is looking for a nested structure like: rawData.standings.roster[0].standings.player..."></textarea>
                     <button id="save-button" class="w-full bg-[#e32636] text-white font-bold py-3 rounded-lg hover:bg-red-600 transition-colors">
                         Save Roster Data
@@ -240,8 +230,6 @@
                 return;
             }
 
-            console.log("Parsed JSON Data:", rawData);
-
             try {
                 // Safely access the nested player, point, and loot history data.
                 const roster = rawData?.standings?.roster?.[0]?.standings?.player;
@@ -252,13 +240,8 @@
                     showStatusMessage("Error: Could not find player data at the expected path: `standings.roster[0].standings.player`. Please check your JSON format.", true);
                     return;
                 }
-                
-                console.log("Extracted Roster:", roster);
-                console.log("Extracted Point History:", pointHistory);
-                console.log("Extracted Loot History:", lootHistory);
 
                 // --- 1. Save Roster Data ---
-                // Map the complex roster array into the simple format our table expects
                 const formattedRoster = roster.map(p => ({
                     name: p.name,
                     ep: p.points,
@@ -273,28 +256,24 @@
                 
                 // --- 2. Save Point History Data ---
                 const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
-                // Clear the existing collection to prevent duplicates
                 await clearCollection(pointHistoryCollectionRef);
                 
                 if (pointHistory && Array.isArray(pointHistory)) {
-                    // Iterate and add each point history entry as a separate document
                     const addPromises = pointHistory.map(point => addDoc(pointHistoryCollectionRef, point));
                     await Promise.all(addPromises);
                 }
                 
                 // --- 3. Save Loot History Data ---
                 const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
-                // Clear the existing collection to prevent duplicates
                 await clearCollection(lootHistoryCollectionRef);
                 
                 if (lootHistory && Array.isArray(lootHistory)) {
-                    // Iterate and add each loot history entry as a separate document
                     const addPromises = lootHistory.map(item => addDoc(lootHistoryCollectionRef, item));
                     await Promise.all(addPromises);
                 }
                 
                 showStatusMessage("Roster, Point History, and Loot History data saved successfully!", false);
-                dataArea.value = ''; // Clear the text area after successful save
+                dataArea.value = '';
                 
                 // Switch to the public view to show the new data
                 renderPublicView();
@@ -305,11 +284,12 @@
         }
         
         // ======================== PUBLIC VIEW ========================
-        function renderPublicView() {
+        async function renderPublicView() {
             const appView = document.getElementById('app-view');
             
+            // Build the appropriate authentication link based on user role
             let authLink = isAdmin ?
-                `<a href="#" id="logout-link" class="underline hover:text-[#e32636]">Logout</a>` :
+                `<a href="#" id="admin-upload-link" class="underline hover:text-[#e32636]">Update Roster</a> | <a href="#" id="logout-link" class="underline hover:text-[#e32636]">Logout</a>` :
                 `<a href="#" id="admin-login-link" class="underline hover:text-[#e32636]">Are you the Raid Lead? Log in to update.</a>`;
 
             appView.innerHTML = `
@@ -355,72 +335,14 @@
             
             if (isAdmin) {
                 document.getElementById('logout-link').addEventListener('click', signOutUser);
+                // Add the new listener for the admin-upload-link
+                document.getElementById('admin-upload-link').addEventListener('click', renderAdminView);
             } else {
                 document.getElementById('admin-login-link').addEventListener('click', signInAdmin);
             }
             
-            // Set up a real-time listener for the roster data
-            const rosterRef = doc(db, `artifacts/${appId}/public/data/rosters`, 'guild_roster');
-            onSnapshot(rosterRef, (docSnap) => {
-                const tableContainer = document.getElementById('roster-table-container');
-                const lastUpdatedDisplay = document.getElementById('last-updated-display');
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    rosterData = data.roster; // Store the roster data globally
-                    displayRosterTable(rosterData, tableContainer);
-                    lastUpdatedDisplay.innerHTML = `Last Updated: ${new Date(data.lastUpdated).toLocaleString()}`;
-                    
-                    // Populate the filter dropdowns once the roster is loaded
-                    populatePlayerFilters(rosterData);
-                    
-                } else {
-                    tableContainer.innerHTML = '<p class="text-center text-gray-400">No roster data found yet. Please ask the Raid Lead to upload data.</p>';
-                    rosterData = [];
-                }
-                
-                // Re-display history tables with the (possibly new) roster data
-                updatePointHistoryDisplay();
-                updateLootHistoryDisplay();
-            }, (error) => {
-                const tableContainer = document.getElementById('roster-table-container');
-                tableContainer.innerHTML = '<p class="text-center text-red-400">Error fetching data. Please try again later.</p>';
-                console.error("Error fetching roster: ", error);
-            });
-            
-            // Set up a real-time listener for the point history
-            const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
-            onSnapshot(pointHistoryCollectionRef, (querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    allPointHistory = [];
-                    querySnapshot.forEach(doc => allPointHistory.push(doc.data()));
-                    updatePointHistoryDisplay();
-                } else {
-                    allPointHistory = [];
-                    updatePointHistoryDisplay();
-                }
-            }, (error) => {
-                const container = document.getElementById('point-history-container');
-                container.innerHTML = '<p class="text-center text-red-400">Error fetching point history.</p>';
-                console.error("Error fetching point history: ", error);
-            });
-            
-            // Set up a real-time listener for the loot history
-            const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
-            onSnapshot(lootHistoryCollectionRef, (querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    allLootHistory = [];
-                    querySnapshot.forEach(doc => allLootHistory.push(doc.data()));
-                    updateLootHistoryDisplay();
-                } else {
-                    allLootHistory = [];
-                    updateLootHistoryDisplay();
-                }
-            }, (error) => {
-                const container = document.getElementById('loot-history-container');
-                container.innerHTML = '<p class="text-center text-red-400">Error fetching loot history.</p>';
-                console.error("Error fetching loot history: ", error);
-            });
+            // Set up listeners for real-time data updates for the public view
+            setupPublicViewListeners();
 
             // Add event listeners for the filter dropdowns
             document.getElementById('point-player-filter').addEventListener('change', (e) => {
@@ -431,6 +353,48 @@
             document.getElementById('loot-player-filter').addEventListener('change', (e) => {
                 lootFilter = e.target.value;
                 updateLootHistoryDisplay();
+            });
+        }
+        
+        // This function sets up real-time listeners for the public view data
+        function setupPublicViewListeners() {
+            // Listener for Roster data
+            const rosterRef = doc(db, `artifacts/${appId}/public/data/rosters`, 'guild_roster');
+            onSnapshot(rosterRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    rosterData = data.roster || [];
+                    const tableContainer = document.getElementById('roster-table-container');
+                    displayRosterTable(rosterData, tableContainer);
+                    
+                    document.getElementById('last-updated-display').innerHTML = `Last Updated: ${new Date(data.lastUpdated).toLocaleString()}`;
+                    
+                    // Also update the filter dropdowns
+                    populatePlayerFilters(rosterData);
+                }
+            }, (error) => {
+                console.error("Error fetching roster data:", error);
+                showStatusMessage("Error fetching roster data. Check your Firebase security rules.", true);
+            });
+            
+            // Listener for Point History data
+            const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
+            onSnapshot(pointHistoryCollectionRef, (querySnapshot) => {
+                allPointHistory = querySnapshot.docs.map(doc => doc.data());
+                updatePointHistoryDisplay();
+            }, (error) => {
+                console.error("Error fetching point history:", error);
+                showStatusMessage("Error fetching point history. Check your Firebase security rules.", true);
+            });
+            
+            // Listener for Loot History data
+            const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
+            onSnapshot(lootHistoryCollectionRef, (querySnapshot) => {
+                allLootHistory = querySnapshot.docs.map(doc => doc.data());
+                updateLootHistoryDisplay();
+            }, (error) => {
+                console.error("Error fetching loot history:", error);
+                showStatusMessage("Error fetching loot history. Check your Firebase security rules.", true);
             });
         }
         
@@ -691,7 +655,6 @@
             container.innerHTML = tableHTML;
         }
 
-        // Start the application when the window loads
         window.onload = initFirebase;
     </script>
 </body>

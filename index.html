@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Use the Inter font from Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com"> 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     
@@ -40,14 +40,41 @@
             border-radius: 10px;
         }
 
-        .quality-6 { color: #f59e0b; } /* Legendary - Amber */
-        .quality-5 { color: #a855f7; } /* Epic - Purple */
-        .quality-4 { color: #2563eb; } /* Rare - Blue */
-        .quality-3 { color: #10b981; } /* Uncommon - Emerald */
-
+        /* WoW Item Quality Colors based on the provided index:
+            2: Uncommon (Green)
+            3: Rare (Blue)
+            4: Epic (Purple)
+            5: Legendary (Orange)
+        */
+        .quality-2 { color: #10b981; } /* Uncommon - Emerald */
+        .quality-3 { color: #2563eb; } /* Rare - Blue */
+        .quality-4 { color: #a855f7; } /* Epic - Purple */
+        .quality-5 { color: #f59e0b; } /* Legendary - Amber */
+        
         .ep-points { color: #10b981; } /* Emerald */
         .gp-points { color: #f59e0b; } /* Amber */
         .decay-points { color: #e32636; } /* Red */
+
+        /* Custom scrollbar for history tables */
+        .history-table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .history-table-container::-webkit-scrollbar-track {
+            background: #1c1c1c;
+            border-radius: 10px;
+        }
+        .history-table-container::-webkit-scrollbar-thumb {
+            background: #e32636;
+            border-radius: 10px;
+        }
+
+        /* Ensure table header sticks to the top of the scroll container */
+        .history-table-container thead {
+            position: sticky;
+            top: 0;
+            background-color: #e32636;
+            z-index: 10;
+        }
     </style>
 </head>
 <body class="p-6 md:p-10 flex flex-col items-center justify-center min-h-screen">
@@ -315,7 +342,7 @@
                             <select id="point-player-filter" class="ml-2 p-1 rounded-md bg-gray-800 text-white cursor-pointer"></select>
                         </div>
                     </h2>
-                    <div id="point-history-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto table-container">
+                    <div id="point-history-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto history-table-container">
                         <p class="text-center text-gray-400">Fetching point history...</p>
                     </div>
 
@@ -327,7 +354,7 @@
                             <select id="loot-player-filter" class="ml-2 p-1 rounded-md bg-gray-800 text-white cursor-pointer"></select>
                         </div>
                     </h2>
-                    <div id="loot-history-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto table-container">
+                    <div id="loot-history-container" class="bg-gray-900 p-4 rounded-lg overflow-x-auto history-table-container">
                         <p class="text-center text-gray-400">Fetching loot history...</p>
                     </div>
                 </div>
@@ -544,6 +571,9 @@
                 return;
             }
 
+            // Create a wrapper div for the scrollable content with a max height
+            container.classList.add('max-h-96', 'overflow-y-auto');
+
             let tableHTML = `
                 <table class="w-full text-left rounded-lg overflow-hidden">
                     <thead class="bg-[#e32636] text-white">
@@ -609,6 +639,9 @@
                 return;
             }
 
+            // Create a wrapper div for the scrollable content with a max height
+            container.classList.add('max-h-96', 'overflow-y-auto');
+
             let tableHTML = `
                 <table class="w-full text-left rounded-lg overflow-hidden">
                     <thead class="bg-[#e32636] text-white">
@@ -628,6 +661,8 @@
 
             sortedHistory.forEach(item => {
                 const date = new Date(item.timestamp * 1000).toLocaleString(); // Convert to milliseconds
+                
+                // Directly use item.quality to get the correct CSS class name
                 const qualityClass = item.quality ? `quality-${item.quality}` : '';
                 
                 // Construct the Wowhead-compatible link using the actual item.id from the data.

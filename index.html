@@ -9,7 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Use the Inter font from Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com"> 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     
@@ -217,7 +217,31 @@
             });
             await Promise.all(deletePromises);
         }
-        
+
+        // A helper function to process a large array in batches to avoid browser freezing
+        async function processInBatches(data, collectionRef, batchSize, type) {
+            const totalItems = data.length;
+            showStatusMessage(`Clearing existing ${type} data...`);
+            await clearCollection(collectionRef); // Wait for the clear to finish
+            await new Promise(resolve => setTimeout(resolve, 0)); // Yield to the UI to update
+
+            if (totalItems === 0) {
+                showStatusMessage(`No ${type} data to save. Skipping.`);
+                return;
+            }
+
+            for (let i = 0; i < totalItems; i += batchSize) {
+                const batch = data.slice(i, i + batchSize);
+                showStatusMessage(`Saving ${type} data: ${Math.min(i + batchSize, totalItems)} of ${totalItems}...`);
+                
+                const addPromises = batch.map(item => addDoc(collectionRef, item));
+                await Promise.all(addPromises);
+                
+                // Pause briefly to allow the UI to update the status message
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+
         // ======================== ADMIN VIEW ========================
         function renderAdminView() {
             const appView = document.getElementById('app-view');
@@ -243,21 +267,22 @@
         async function saveData() {
             const dataArea = document.getElementById('data-paste-area');
             const dataString = dataArea.value;
+            const saveButton = document.getElementById('save-button');
 
             if (!dataString) {
                 showStatusMessage("Please paste data before saving.", true);
                 return;
             }
             
-            let rawData;
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+            
             try {
-                rawData = JSON.parse(dataString);
-            } catch (e) {
-                showStatusMessage("Error: The text you pasted is not a valid JSON format.", true);
-                return;
-            }
+                showStatusMessage("Parsing data...");
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
+                
+                let rawData = JSON.parse(dataString);
 
-            try {
                 // Safely access the nested player, point, and loot history data.
                 const roster = rawData?.standings?.roster?.[0]?.standings?.player;
                 const pointHistory = rawData?.pointHistory?.roster?.[0]?.pointHistory?.point;
@@ -268,7 +293,10 @@
                     return;
                 }
 
-                // --- 1. Save Roster Data ---
+                // --- 1. Save Roster Data (no batching needed for a single doc) ---
+                showStatusMessage("Saving roster data...");
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
+
                 const formattedRoster = roster.map(p => ({
                     name: p.name,
                     ep: p.points,
@@ -281,25 +309,23 @@
                     lastUpdated: new Date().toISOString()
                 });
                 
-                // --- 2. Save Point History Data ---
+                // --- 2. Save Point History Data with Batching ---
                 const pointHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/point_history_items`);
-                await clearCollection(pointHistoryCollectionRef);
-                
                 if (pointHistory && Array.isArray(pointHistory)) {
-                    const addPromises = pointHistory.map(point => addDoc(pointHistoryCollectionRef, point));
-                    await Promise.all(addPromises);
+                    await processInBatches(pointHistory, pointHistoryCollectionRef, 50, 'point history');
+                } else {
+                    showStatusMessage("No point history data found. Skipping.");
                 }
                 
-                // --- 3. Save Loot History Data ---
+                // --- 3. Save Loot History Data with Batching ---
                 const lootHistoryCollectionRef = collection(db, `artifacts/${appId}/public/data/loot_history_items`);
-                await clearCollection(lootHistoryCollectionRef);
-                
                 if (lootHistory && Array.isArray(lootHistory)) {
-                    const addPromises = lootHistory.map(item => addDoc(lootHistoryCollectionRef, item));
-                    await Promise.all(addPromises);
+                    await processInBatches(lootHistory, lootHistoryCollectionRef, 50, 'loot history');
+                } else {
+                    showStatusMessage("No loot history data found. Skipping.");
                 }
-                
-                showStatusMessage("Roster, Point History, and Loot History data saved successfully!", false);
+
+                showStatusMessage("Roster, Point History, and Loot History data saved successfully! ✨", false);
                 dataArea.value = '';
                 
                 // Switch to the public view to show the new data
@@ -307,6 +333,9 @@
             } catch (e) {
                 showStatusMessage("An unexpected error occurred while saving. Please check the browser console for details.", true);
                 console.error("Error saving document:", e);
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Roster Data';
             }
         }
         

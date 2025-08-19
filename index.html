@@ -389,6 +389,9 @@
                 </div>
             `;
             
+            // Wait for the DOM to be updated before attaching listeners
+            await new Promise(resolve => setTimeout(resolve, 0));
+            
             if (isAdmin) {
                 document.getElementById('logout-link').addEventListener('click', signOutUser);
                 // Add the new listener for the admin-upload-link
